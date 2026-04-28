@@ -216,7 +216,7 @@ const processImage = async (
   });
 };
 
-function Main() {
+function Main({ imgbbKey }: { imgbbKey: string }) {
   const [items, setItems] = useState<UploadItem[]>([]);
   const [activeTab, setActiveTab] = useState<'file' | 'url' | 'album'>('file');
   const [urlInput, setUrlInput] = useState('');
@@ -505,7 +505,7 @@ function Main() {
           URL.revokeObjectURL(objectUrl);
         }
         
-        const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+        const res = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbKey}`, {
           method: 'POST',
           body: form
         });
@@ -571,7 +571,7 @@ function Main() {
           <h1 className="text-lg font-semibold tracking-tight text-slate-800">BlogUploader Pro</h1>
         </div>
         <div className="flex items-center gap-4 text-sm">
-          {IMGBB_API_KEY ? (
+          {imgbbKey ? (
             <div className="flex items-center gap-2 bg-slate-100 py-1.5 px-3 rounded-full">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
               <span className="text-slate-600 font-medium">Đã cấu hình API</span>
@@ -967,7 +967,7 @@ function Main() {
                 onClick={toggleUpload}
                 onMouseDown={createRipple}
                 disabled={!uploading && !isPendingFiles}
-                className={`w-full relative overflow-hidden mt-2 py-3.5 text-white font-bold rounded-xl transition-all ${!uploading && !isPendingFiles ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : (!IMGBB_API_KEY ? 'bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200' : (uploading ? 'bg-red-500 hover:bg-red-600 shadow-lg shadow-red-200 active:scale-[0.98]' : 'bg-orange-600 hover:bg-orange-700 shadow-lg shadow-orange-200 active:scale-[0.98]'))}`}
+                className={`w-full relative overflow-hidden mt-2 py-3.5 text-white font-bold rounded-xl transition-all ${!uploading && !isPendingFiles ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : (!imgbbKey ? 'bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200' : (uploading ? 'bg-red-500 hover:bg-red-600 shadow-lg shadow-red-200 active:scale-[0.98]' : 'bg-orange-600 hover:bg-orange-700 shadow-lg shadow-orange-200 active:scale-[0.98]'))}`}
               >
                 {uploading && (
                   <div className="absolute inset-y-0 left-0 bg-green-500/20 transition-all duration-300" style={{ width: `${progressPercent}%` }} />
@@ -1140,17 +1140,47 @@ function Main() {
 }
 
 export default function App() {
-  if (!IMGBB_API_KEY) {
+  const [apiKey, setApiKey] = useState(() => {
+    return import.meta.env.VITE_IMGBB_API_KEY || localStorage.getItem('BLOG_UPLOADER_API_KEY') || '';
+  });
+  const [localInput, setLocalInput] = useState('');
+
+  const saveKey = () => {
+    if (localInput.trim()) {
+      localStorage.setItem('BLOG_UPLOADER_API_KEY', localInput.trim());
+      setApiKey(localInput.trim());
+    }
+  };
+
+  if (!apiKey) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6 text-sans">
         <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center space-y-4">
           <AlertCircle className="w-12 h-12 text-blue-500 mx-auto" />
           <h2 className="text-xl font-semibold text-gray-900">Thiếu Key kết nối ImgBB</h2>
           <p className="text-gray-600">
-            Để tạo link ảnh <code className="bg-gray-100 px-1 rounded">.jpg</code>, vui lòng cung cấp
-            <code className="bg-gray-100 text-pink-600 px-2 py-1 rounded mx-1 text-sm">VITE_IMGBB_API_KEY</code>
-            trong cài đặt <strong>Secrets</strong> của AI Studio.
+            Để tạo link ảnh <code className="bg-gray-100 px-1 rounded">.jpg</code>, hệ thống cần API Key.
+            <strong> {typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id ? 'Vì bạn đang dùng Chrome Extension' : 'Vì bạn đang chạy mã tải về'} </strong>, 
+            vui lòng nhập API Key trực tiếp của bạn vào ô dưới đây:
           </p>
+          
+          <div className="flex flex-col gap-2 my-4">
+            <input 
+              type="text" 
+              placeholder="Nhập API Key ImgBB..." 
+              value={localInput} 
+              onChange={e => setLocalInput(e.target.value)} 
+              className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none w-full shadow-sm text-sm" 
+            />
+            <button 
+              onClick={saveKey} 
+              disabled={!localInput.trim()}
+              className="px-4 py-3 bg-blue-600 font-semibold text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+            >
+              Lưu Khóa (Save Key)
+            </button>
+          </div>
+
           <div className="mt-6 text-sm text-gray-500 bg-gray-100 p-4 rounded-xl text-left space-y-2">
             <p><strong>Cách lấy khóa (Free 100%):</strong></p>
             <ol className="list-decimal pl-4 space-y-1">
@@ -1158,7 +1188,7 @@ export default function App() {
               <li>Click <strong>"Get API Key"</strong></li>
               <li>Đăng ký/Đăng nhập (bằng tài khoản Google, FB...)</li>
               <li>Tạo chìa khóa và sao chép mã (dòng dài)</li>
-              <li>Paste vào Secrets của AI Studio.</li>
+              <li>Dán khóa vào ô nhập bên trên.</li>
             </ol>
           </div>
         </div>
@@ -1166,5 +1196,5 @@ export default function App() {
     );
   }
 
-  return <Main />;
+  return <Main imgbbKey={apiKey} />;
 }
